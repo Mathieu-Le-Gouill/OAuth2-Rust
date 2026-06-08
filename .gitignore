@@ -1,0 +1,6 @@
+# Rust
+target/
+*.d
+
+# Provider Secrets
+.env
