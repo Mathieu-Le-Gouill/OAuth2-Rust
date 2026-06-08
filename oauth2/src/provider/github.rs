@@ -1,8 +1,8 @@
-use super::Provider;
+use super::ProviderConfig;
 
 // ── GitHub ───────────────────────────────────────────────────────────────
 // Confidential client (OAuth Apps require client_secret; no PKCE support).
-pub static GITHUB: Provider = Provider {
+pub static GITHUB: ProviderConfig = ProviderConfig {
     name: "github",
     auth_url: "https://github.com/login/oauth/authorize",
     token_url: "https://github.com/login/oauth/access_token",
@@ -10,8 +10,8 @@ pub static GITHUB: Provider = Provider {
     uses_pkce: false,
     confidential: true,
 
-    env_client_id: "GITHUB_CLIENT_ID",
-    env_client_secret: "GITHUB_CLIENT_SECRET",
+    client_id_env: "GITHUB_CLIENT_ID",
+    client_secret_env: Some("GITHUB_CLIENT_SECRET"),
 
     //extra_auth_params: NO_EXTRA
 };

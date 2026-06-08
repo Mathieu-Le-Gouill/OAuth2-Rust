@@ -282,6 +282,7 @@ Copy `.env.example` to `.env` and fill in the values.
 
 - [RFC 6749 — OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749)
 - [RFC 7636 — PKCE](https://datatracker.ietf.org/doc/html/rfc7636)
+- [GitHub oauth2-rs](https://github.com/ramosbugs/oauth2-rs/)
 - [GitHub OAuth Apps](https://docs.github.com/en/apps/oauth-apps)
 - [Google Identity — OAuth 2.0](https://developers.google.com/identity/protocols/oauth2)
 - [Microsoft Identity Platform](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow)

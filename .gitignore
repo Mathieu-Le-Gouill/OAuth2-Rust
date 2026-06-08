@@ -4,3 +4,11 @@ target/
 
 # Provider Secrets
 .env
+
+# Cargo
+debug/
+target/
+Cargo.lock
+
+# rustfmt
+**/*.rs.bk

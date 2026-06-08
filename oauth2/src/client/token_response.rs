@@ -14,9 +14,9 @@ pub struct TokenResponse {
 
     /// The refresh token issued by the OAuth2 provider
     /// Used to obtain a new acess token after the current one expire
-    pub refresh_token: Optional<String>,
+    pub refresh_token: Option<String>,
 
     /// The granted scope issued by the OAuth2 provider
     /// Required if it differs from the requested scope
-    pub scope: Optional<String>
+    pub scope: Option<String>
 }

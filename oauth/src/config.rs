@@ -1,1 +1,0 @@
-const ENV_REDIRECT_URI: &str = "REDIRECT_URI";
