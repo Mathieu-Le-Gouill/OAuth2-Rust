@@ -5,7 +5,7 @@ pub mod auth_callback;
 
 
 pub use token_response::TokenResponse;
-pub use pkce_code_challenge::{PkceCodeChallenge, PkceCodeVerifier};
+pub use pkce_code_challenge::PkceChallenge;
 pub use crsf_token::CsrfToken;
 pub use auth_callback::OAuth2Callback;
 
@@ -60,7 +60,7 @@ impl OAuth2Client {
         &self,
         scope: &str,
         state: &str,
-        pkce_code_challenge: Option<&PkceCodeChallenge>
+        pkce_code_challenge: Option<&String>
     ) -> String {
 
         let mut url = Url::parse(&self.auth_url).expect("invalid auth_url");
@@ -72,23 +72,38 @@ impl OAuth2Client {
             .append_pair("scope", scope)
             .append_pair("state", state);
 
-        if let Some(pkce_challenge) = pkce_code_challenge {
+        if let Some(code_challenge) = pkce_code_challenge {
             url.query_pairs_mut()
-                .append_pair("code_challenge", pkce_challenge.challenge())
-                .append_pair("code_challenge_method", pkce_challenge.method().as_str());
+                .append_pair("code_challenge", &code_challenge)
+                .append_pair("code_challenge_method", "S256");
         }
 
         url.to_string()
     }
     
 
-    /// Launch an HTTP Request to exchange an authorization code
-    /// with an acess token + refresh token
+    /// Exchanges an OAuth2 authorization code for an access token.
+    ///
+    /// This function performs a POST request to the OAuth2 token endpoint using
+    /// the authorization code flow. It optionally supports PKCE verification for
+    /// enhanced security.
+    ///
+    /// # Parameters
+    ///
+    /// - `code`: The authorization code received from the OAuth2 redirect.
+    /// - `pkce_verifier`: Optional PKCE code verifier used when PKCE is enabled.
+    ///
+    /// # Returns
+    ///
+    /// A `TokenResponse` containing the access token, refresh token (if provided),
+    /// and other OAuth2 token metadata, or a request error if the exchange fails.
+    /// ```
     pub async fn exchange_code(
         &self,
         code: &str,
-        pkce_verifier: Option<PkceCodeVerifier>
+        pkce_verifier: Option<&String>
     ) -> Result<TokenResponse, reqwest::Error> {
+
         // Create an HTTP client using reqwest
         let client = Client::new();
 
@@ -104,10 +119,7 @@ impl OAuth2Client {
             form.push(("client_secret", secret.as_str()));
         }
 
-        let verifier_str = pkce_verifier.as_ref()
-            .map(|v| v.as_str().to_owned());
-
-        if let Some(ref verifier) = verifier_str {
+        if let Some(ref verifier) = pkce_verifier {
             form.push(("code_verifier", verifier));
         }
 
