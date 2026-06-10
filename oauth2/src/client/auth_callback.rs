@@ -1,38 +1,8 @@
 use url::Url;
 use tokio::net::TcpListener;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OAuth2Error {
-    InvalidRequest,
-    UnauthorizedClient,
-    AccessDenied,
-    UnsupportedResponseType,
-    InvalidScope,
-    ServerError,
-    TemporarilyUnavailable,
-    Other(String)
-}
-
-
-impl OAuth2Error {
-
-    /// Converts OAuth2 error string into a strongly typed variant
-    fn from_str(s: &str) -> Self {
-        match s {
-            "invalid_request" => Self::InvalidRequest,
-            "unauthorized_client" => Self::UnauthorizedClient,
-            "access_denied" => Self::AccessDenied,
-            "unsupported_response_type" => Self::UnsupportedResponseType,
-            "invalid_scope" => Self::InvalidScope,
-            "server_error" => Self::ServerError,
-            "temporarily_unavailable" => Self::TemporarilyUnavailable,
-            other => Self::Other(other.to_string())
-        }
-    }
-}
-
+use tokio::time::{timeout, Duration};
+use super::OAuthError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OAuth2Callback {
@@ -46,7 +16,7 @@ pub enum OAuth2Callback {
     },
     Error {
         /// OAuth2 error code (access_denied, ...)
-        error: OAuth2Error,
+        error: OAuthError,
 
         /// Human-readable error description (if provided by provider)
         error_description: Option<String>,
@@ -62,38 +32,41 @@ impl OAuth2Callback {
     /// Binds a local HTTP server on the redirect URI's port, waits for the
     /// provider to redirect the user's browser, then parses and returns the
     /// callback parameters
-    pub async fn listen(redirect_uri: &str) -> Result<Self, String> {
-        let url = Url::parse(redirect_uri).map_err(|e| e.to_string())?;
+    pub async fn listen(redirect_uri: &str) -> Result<Self, OAuthError> {
+
+        let url = Url::parse(redirect_uri).map_err(|e|  OAuthError::CallbackServer(e.to_string()))?;
         let bind_addr = bind_addr_from_uri(&url);
 
         // Start listening for the OAuth provider redirect
         let listener = TcpListener::bind(&bind_addr).await
-            .map_err(|e| format!("Failed to bind {}: {}", bind_addr, e))?;
+            .map_err(|e| OAuthError::CallbackServer(format!("Failed to bind {}: {}", bind_addr, e)))?;
 
         println!("Waiting for OAuth2 callback on {} ...", bind_addr);
 
         // Wait until the browser connects after authentication
-        let (mut stream, _) = listener.accept().await
-            .map_err(|e| format!("Failed to accept connection: {}", e))?;
+        let (mut stream, _) = timeout(Duration::from_secs(120), listener.accept())
+            .await
+            .map_err(|_| OAuthError::CallbackTimeout("Timed out waiting for OAuth callback".into()))?
+            .map_err(|e| OAuthError::CallbackServer(format!("Failed to accept connection: {}", e)))?;
 
         // Read the incoming HTTP request
         let mut buf = [0u8; 4096];
         let n = stream.read(&mut buf).await
-            .map_err(|e| format!("Failed to read request: {}", e))?;
+            .map_err(|e| OAuthError::CallbackServer(format!("Failed to read request: {}", e)))?;
 
         // Convert raw bytes into a UTF-8 string
         let request = std::str::from_utf8(&buf[..n])
-            .map_err(|_| "Invalid UTF-8 in HTTP request")?;
+            .map_err(|_| OAuthError::CallbackServer("Invalid UTF-8 in HTTP request".into()))?;
 
-        let path = extract_path(request)?;
+        let path = extract_path(request)
+            .map_err(OAuthError::CallbackServer)?;
 
         let full_url = format!("http://localhost{}", path);
-        let parsed = Url::parse(&full_url).map_err(|e| e.to_string())?;
+        let parsed = Url::parse(&full_url).map_err(|e| OAuthError::CallbackServer(e.to_string()))?;
 
         // Convert query parameters into an OAuth callback result
         // (extract code, state, error, etc.)
-        let callback = Self::from_query_pairs(parsed.query_pairs())
-            .map_err(|e| e.to_string())?;
+        let callback = Self::from_query_pairs(parsed.query_pairs())?;
 
         let body = match callback {
             Self::Success { .. } => "Authorization successful - you may close this tab.",
@@ -113,7 +86,8 @@ impl OAuth2Callback {
     /// Supports success (`code`) and error (`error`) responses from the provider
     fn from_query_pairs<'a>(
         pairs: impl Iterator<Item = (std::borrow::Cow<'a, str>, std::borrow::Cow<'a, str>)>
-    ) -> Result<Self, String> {
+    ) -> Result<Self, OAuthError> {
+
         let mut code = None;
         let mut state = None;
         let mut error = None;
@@ -138,13 +112,13 @@ impl OAuth2Callback {
 
         if let Some(error) = error {
             return Ok(Self::Error {
-                error: OAuth2Error::from_str(&error),
+                error: OAuthError::CallbackServer(String::from(error)),
                 error_description: error_description.map(|e| e.into_owned()),
                 state: state.map(|s| s.into_owned()),
             });
         }
 
-        Err("OAuth callback missing code/error".into())
+        Err(OAuthError::CallbackServer("OAuth callback missing code/error".into()))
     }
 }
 

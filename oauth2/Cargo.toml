@@ -13,3 +13,4 @@ base64 = "0.22"
 rand = "0.8"
 clap = { version = "4.6.1", features = ["derive", "env"] }
 dotenvy = "0.15"
+thiserror = "2.0.18"

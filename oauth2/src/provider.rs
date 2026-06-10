@@ -5,7 +5,7 @@ mod gmail;
 use github::GITHUB;
 use outlook::OUTLOOK;
 use gmail::GMAIL;
-use crate::client::OAuth2Client;
+use crate::client::{OAuth2Client, OAuthError};
 
 /// Everything the OAuth flow needs to know about one provider.
 #[derive(Debug, Clone, Copy)]
@@ -46,26 +46,26 @@ impl ProviderConfig {
 
     /// Build an OAuth2Client from the Provider Configuration.
     /// Reads client_id and client_secret from the environment at runtime.
-    pub fn into_client(&self, redirect_uri: &str) -> Result<OAuth2Client, String> {
+    pub fn into_client(&self, redirect_uri: &str) -> Result<OAuth2Client, OAuthError> {
         let client_id = std::env::var(self.client_id_env)
-            .map_err(|_| format!("{} env var not set", self.client_id_env))?;
+            .map_err(|_| OAuthError::InvalidClientID(format!("{} env var not set", self.client_id_env)))?;
 
         let client_secret = if self.confidential {
             let key = self.client_secret_env.ok_or_else(|| {
-                format!("Confidential provider '{}' has no client_secret_env defined", self.name)
+                OAuthError::InvalidClientSecret(format!("Confidential provider '{}' has no client_secret_env defined", self.name))
             })?;
-            Some(std::env::var(key).map_err(|_| format!("{} env var not set", key))?)
+            Some(std::env::var(key).map_err(|_| OAuthError::InvalidClientSecret(format!("{} env var not set", key)))?)
         } else {
             self.client_secret_env.and_then(|key| std::env::var(key).ok())
         };
 
-        Ok(OAuth2Client {
+        Ok(OAuth2Client::new(
             client_id,
             client_secret,
-            auth_url: self.auth_url,
-            token_url: self.token_url,
-            redirect_uri: redirect_uri.to_owned(),
-        })
+            self.auth_url,
+            self.token_url,
+            redirect_uri.to_owned(),
+        ))
     }
 }
 

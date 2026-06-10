@@ -5,7 +5,6 @@ use clap::Parser;
 use crate::provider::{ProviderConfig, PROVIDERS};
 use crate::client::{PkceChallenge, CsrfToken, OAuth2Callback, OAuth2Client};
 use std::env;
-use std::os::linux::raw::stat;
 
 #[derive(Parser)]
 struct Args {
@@ -110,15 +109,15 @@ fn maybe_generate_pkce_challenge(
 
 fn borrow_pkce_fields(
     pkce_challenge : Option<&PkceChallenge>
-) -> (Option<& String>, Option<& String>) {
+) -> (Option<&str>, Option<&str>) {
 
-    let code_challenge: Option<&String> = pkce_challenge
+    let code_challenge: Option<&str> = pkce_challenge
         .as_ref()
-        .map(|p| &p.code_challenge);
+        .map(|p| p.code_challenge.as_str());
 
-    let code_verifier: Option<&String> = pkce_challenge
+    let code_verifier: Option<&str> = pkce_challenge
         .as_ref()
-        .map(|p| &p.code_verifier);
+        .map(|p| p.code_verifier.as_str());
 
     (code_challenge, code_verifier)
 }
