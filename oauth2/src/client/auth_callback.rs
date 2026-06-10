@@ -64,56 +64,56 @@ impl OAuth2Callback {
     /// callback parameters
     pub async fn listen(redirect_uri: &str) -> Result<Self, String> {
         let url = Url::parse(redirect_uri).map_err(|e| e.to_string())?;
+        let bind_addr = bind_addr_from_uri(&url);
 
-        let host = url.host_str().unwrap_or("127.0.0.1");
-        let port = url.port().unwrap_or(8080);
-        let bind_addr = format!("{}:{}", host, port);
-
+        // Start listening for the OAuth provider redirect
         let listener = TcpListener::bind(&bind_addr).await
             .map_err(|e| format!("Failed to bind {}: {}", bind_addr, e))?;
 
         println!("Waiting for OAuth2 callback on {} ...", bind_addr);
 
+        // Wait until the browser connects after authentication
         let (mut stream, _) = listener.accept().await
             .map_err(|e| format!("Failed to accept connection: {}", e))?;
 
+        // Read the incoming HTTP request
         let mut buf = [0u8; 4096];
         let n = stream.read(&mut buf).await
             .map_err(|e| format!("Failed to read request: {}", e))?;
 
+        // Convert raw bytes into a UTF-8 string
         let request = std::str::from_utf8(&buf[..n])
             .map_err(|_| "Invalid UTF-8 in HTTP request")?;
 
-        // First line: "GET /callback?code=...&state=... HTTP/1.1"
-        let path_and_query = request
-            .lines()
-            .next()
-            .and_then(|line| line.split_whitespace().nth(1))
-            .ok_or("Malformed HTTP request line")?;
+        let path = extract_path(request)?;
 
-        // Parse query params by prepending a throwaway base
-        let full_url = format!("http://localhost{}", path_and_query);
+        let full_url = format!("http://localhost{}", path);
         let parsed = Url::parse(&full_url).map_err(|e| e.to_string())?;
 
-        let callback = Self::from_query_pairs(parsed.query_pairs());
+        // Convert query parameters into an OAuth callback result
+        // (extract code, state, error, etc.)
+        let callback = Self::from_query_pairs(parsed.query_pairs())
+            .map_err(|e| e.to_string())?;
 
-        // Respond to the browser so the user sees a confirmation
-        let body = match &callback {
-            Ok(Self::Success { .. }) =>
-                "<html><body><h2>Authorization successful - you may close this tab.</h2></body></html>",
-            _ =>
-                "<html><body><h2>Authorization failed - you may close this tab.</h2></body></html>",
+        let body = match callback {
+            Self::Success { .. } => "Authorization successful - you may close this tab.",
+            Self::Error { .. } => "Authorization failed - you may close this tab.",
         };
-        let response = format!(
-            "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-            body.len(), body
-        );
-        stream.write_all(response.as_bytes()).await.ok();
 
-        callback
+        // Send the response back to the browser
+        stream
+            .write_all(html_response(body).as_bytes())
+            .await
+            .ok();
+
+        Ok(callback)
     }
 
-    fn from_query_pairs<'a>(pairs: impl Iterator<Item = (std::borrow::Cow<'a, str>, std::borrow::Cow<'a, str>)>) -> Result<Self, String> {
+    /// Parses OAuth2 redirect query parameters into a callback result
+    /// Supports success (`code`) and error (`error`) responses from the provider
+    fn from_query_pairs<'a>(
+        pairs: impl Iterator<Item = (std::borrow::Cow<'a, str>, std::borrow::Cow<'a, str>)>
+    ) -> Result<Self, String> {
         let mut code = None;
         let mut state = None;
         let mut error = None;
@@ -121,25 +121,57 @@ impl OAuth2Callback {
 
         for (k, v) in pairs {
             match k.as_ref() {
-                "code"              => code              = Some(v.into_owned()),
-                "state"             => state             = Some(v.into_owned()),
-                "error"             => error             = Some(v.into_owned()),
-                "error_description" => error_description = Some(v.into_owned()),
+                "code" => code = Some(v),
+                "state" => state = Some(v),
+                "error" => error = Some(v),
+                "error_description" => error_description = Some(v),
                 _ => {}
             }
         }
 
         if let Some(code) = code {
-            return Ok(Self::Success { code, state });
-        }
-        if let Some(error) = error {
-            return Ok(Self::Error {
-                error: OAuth2Error::from_str(&error),
-                error_description,
-                state,
+            return Ok(Self::Success {
+                code: code.into_owned(),
+                state: state.map(|s| s.into_owned()),
             });
         }
 
-        Err("OAuth callback: missing both code and error parameters".into())
+        if let Some(error) = error {
+            return Ok(Self::Error {
+                error: OAuth2Error::from_str(&error),
+                error_description: error_description.map(|e| e.into_owned()),
+                state: state.map(|s| s.into_owned()),
+            });
+        }
+
+        Err("OAuth callback missing code/error".into())
     }
+}
+
+
+/// Builds a TCP bind address (host:port) from a redirect URI
+fn bind_addr_from_uri(uri: &Url) -> String {
+    format!(
+        "{}:{}",
+        uri.host_str().unwrap_or("127.0.0.1"),
+        uri.port().unwrap_or(8080)
+    )
+}
+
+/// Extracts the request path and query from the first HTTP request line
+fn extract_path(request: &str) -> Result<&str, String> {
+    request
+        .lines()
+        .next()
+        .and_then(|line| line.split_whitespace().nth(1))
+        .ok_or("Malformed HTTP request line".into())
+}
+
+/// Builds a minimal HTTP 200 response containing an HTML body
+fn html_response(body: &str) -> String {
+    format!(
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    )
 }
