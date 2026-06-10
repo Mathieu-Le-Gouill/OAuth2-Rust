@@ -19,6 +19,9 @@ pub struct ProviderConfig {
     /// Provider token endpoint
     pub token_url: &'static str,
 
+    // Provider API endpoint
+    pub fetch_url: &'static str,
+
     /// Space- or comma-separated scope string (provider-specific separator).
     pub scopes: &'static str,
 

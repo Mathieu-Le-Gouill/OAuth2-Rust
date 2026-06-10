@@ -5,8 +5,11 @@ use super::ProviderConfig;
 // client_secret for token exchange. Secret is held by auth-proxy, not bundled.
 pub static GMAIL: ProviderConfig = ProviderConfig {
     name: "gmail",
+
     auth_url: "https://accounts.google.com/o/oauth2/v2/auth",
     token_url: "https://oauth2.googleapis.com/token",
+    fetch_url: "https://openidconnect.googleapis.com/v1/userinfo",
+
     scopes: "https://mail.google.com/ https://www.googleapis.com/auth/gmail.readonly",
     uses_pkce: true,
     confidential: true,
