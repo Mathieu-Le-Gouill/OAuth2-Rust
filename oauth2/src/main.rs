@@ -69,7 +69,8 @@ async fn run_oauth2(config: &'static ProviderConfig, redirect_uri: &str) -> Resu
     println!();
 
     // 2. Authorization Response (code) — blocks until the browser hits the redirect URI
-    let callback = OAuth2Callback::listen(redirect_uri).await
+    let callback = OAuth2Callback::listen(redirect_uri)
+        .await
         .map_err(|e| format!("Failed to receive OAuth callback: {e}"))?;
 
     let code = verify_callback(callback, state.as_str())
@@ -88,6 +89,12 @@ async fn run_oauth2(config: &'static ProviderConfig, redirect_uri: &str) -> Resu
     }
 
     dbg!(token.scope);
+
+    let user_info = client.fetch_user_info(config.fetch_url, token.access_token.as_str())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    dbg!(user_info);
 
     Ok(())
 }

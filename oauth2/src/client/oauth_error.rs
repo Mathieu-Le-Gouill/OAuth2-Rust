@@ -32,10 +32,3 @@ pub enum OAuthError {
     #[error("invalid client secret: {0}")]
     InvalidClientSecret(String),
 }
-
-
-impl From<reqwest::Error> for OAuthError {
-    fn from(e: reqwest::Error) -> Self {
-        OAuthError::TokenExchange(e.to_string())
-    }
-}

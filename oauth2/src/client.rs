@@ -4,13 +4,17 @@ pub mod token_response;
 pub mod auth_callback;
 pub mod oauth_error;
 
+
 pub use token_response::TokenResponse;
 pub use pkce_code_challenge::PkceChallenge;
 pub use crsf_token::CsrfToken;
 pub use auth_callback::OAuth2Callback;
 pub use oauth_error::OAuthError;
 
+
 use url::Url;
+
+const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 /// OAuth2 client configuration
 #[derive(Debug, Clone)]
@@ -57,6 +61,7 @@ impl OAuth2Client {
             http: reqwest::Client::new()
         }
     }
+
 
     /// Builds the OAuth2 authorization URL.
     ///
@@ -148,6 +153,20 @@ impl OAuth2Client {
     }
 
 
+    /// Refreshes an OAuth2 access token using a refresh token.
+    ///
+    /// This function performs a POST request to the OAuth2 token endpoint using
+    /// the refresh_token grant type. It optionally includes the client secret for
+    /// confidential clients when required by the provider.
+    ///
+    /// # Parameters
+    ///
+    /// - `refresh_token`: The refresh token issued during the initial token exchange.
+    ///
+    /// # Returns
+    ///
+    /// A `TokenResponse` containing a new access token, and optionally a new refresh token
+    /// and updated metadata, or an `OAuthError` if the request fails.
     pub async fn refresh_access_token(
         &self,
         refresh_token: &str
@@ -170,6 +189,51 @@ impl OAuth2Client {
     }
 
 
+    /// Retrieves the authenticated user's profile information from the OAuth2 provider.
+    ///
+    /// This function performs an authenticated HTTP GET request to the provider's
+    /// user info endpoint using a Bearer access token. It validates the HTTP response
+    /// and parses the returned JSON payload into a generic JSON value.
+    ///
+    /// # Parameters
+    ///
+    /// - `url`: The user info endpoint URL provided by the OAuth2 provider.
+    /// - `access_token`: A valid OAuth2 access token used for authentication.
+    ///
+    /// # Returns
+    ///
+    /// A `serde_json::Value` containing the user's profile information,
+    /// or an `OAuthError` if the request, authentication, or JSON parsing fails.
+    pub async fn fetch_user_info(
+        &self,
+        url: &str,
+        access_token: &str
+    ) -> Result<serde_json::Value, OAuthError> {
+
+        let fetch_err = |e: reqwest::Error| OAuthError::FetchInfo(e.to_string());
+
+        let result = self.http
+            .get(url)
+            .header("Accept", "application/json")
+            .header("User-Agent", USER_AGENT)
+            .bearer_auth(access_token)
+            .send()
+            .await
+            .map_err(fetch_err)?
+
+            // Check HTTP Status
+            .error_for_status()
+            .map_err(fetch_err)?
+
+            // Parse to Json
+            .json()
+            .await
+            .map_err(fetch_err)?;
+
+        Ok(result)
+    }
+
+    /// Executes a POST request to the OAuth2 token endpoint.
     async fn post_token_request<F>(
         &self,
         params: &[(&str, &str)],
@@ -183,35 +247,16 @@ impl OAuth2Client {
             .header("Accept", "application/json")
             .form(params)
             .send()
-            .await?
-            .error_for_status()?
+            .await
+            .map_err(&map_err)?
+
+            // Check HTTP Status
+            .error_for_status()
+            .map_err(&map_err)?
+
+            // Parse to Json
             .json::<TokenResponse>()
             .await
             .map_err(map_err)
     }
-
-
-    /*pub async fn fetch_user_info(
-        &self,
-        url: &str,
-        access_token: &str
-    ) -> Result<serde_json::Value, OAuthError> {
-
-        let fetch_err = |e: reqwest::Error| OAuthError::FetchInfo(e.to_string());
-
-        self.http
-            .get(url)
-            .bearer_auth(access_token)
-            .send()
-            .await
-            .map_err(fetch_err)?
-
-            // Check HTTP Status
-            .error_for_status()
-            .map_err(fetch_err)?
-
-            // Parse to Json
-            .json()
-            .await
-    }*/
 }
