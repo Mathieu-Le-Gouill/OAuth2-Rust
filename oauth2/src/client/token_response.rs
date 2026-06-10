@@ -9,8 +9,8 @@ pub struct TokenResponse {
     /// The acess token type: typically the string "Bearer"
     pub token_type: String,
 
-    /// The acess token lifetime in seconds
-    pub expires_in: String,
+    /// The access token lifetime in seconds
+    pub expires_in: Option<u64>,
 
     /// The refresh token issued by the OAuth2 provider
     /// Used to obtain a new acess token after the current one expire

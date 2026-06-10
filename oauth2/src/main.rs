@@ -66,8 +66,8 @@ async fn run_oauth2(config: &'static ProviderConfig, redirect_uri: &str) -> Resu
     println!("{auth_url}");
     println!();
 
-    // 2. Authorization Response (code)
-    let callback = OAuth2Callback::from_url(redirect_uri)
+    // 2. Authorization Response (code) — blocks until the browser hits the redirect URI
+    let callback = OAuth2Callback::listen(redirect_uri).await
         .map_err(|e| format!("Failed to receive OAuth callback: {e}"))?;
 
     let (code, cb_state) = match callback {
@@ -81,6 +81,8 @@ async fn run_oauth2(config: &'static ProviderConfig, redirect_uri: &str) -> Resu
         return Err("State validation failed".into());
     }
 
+
+
     // 3. Token Request (code exchange)
     let token = client.exchange_code(&code, pkce_verifier)
         .await
@@ -88,7 +90,10 @@ async fn run_oauth2(config: &'static ProviderConfig, redirect_uri: &str) -> Resu
 
     println!("Successfully obtained access token");
 
-    println!("Token expires in: {0:?}", token.expires_in);
+    match token.expires_in {
+        Some(secs) => println!("Token expires in: {}s", secs),
+        None => println!("Token does not expire"),
+    }
 
     Ok(())
 }

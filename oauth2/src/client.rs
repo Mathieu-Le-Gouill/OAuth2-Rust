@@ -113,6 +113,7 @@ impl OAuth2Client {
 
         let result = client
             .post(self.token_url)
+            .header("Accept", "application/json")
             .form(&form)
             .send()
             .await?
