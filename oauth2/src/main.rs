@@ -44,6 +44,7 @@ async fn main() {
 }
 
 
+/// Runs the full OAuth2 flow: authorization, callback handling, token exchange, and user info retrieval
 async fn run_oauth2(registry: &Registry, provider_name: &str, redirect_uri: &str) -> Result<(), OAuthError> {
 
     let app_config: OAuthAppConfig = OAuthAppConfig::new(redirect_uri);
@@ -115,6 +116,7 @@ async fn run_oauth2(registry: &Registry, provider_name: &str, redirect_uri: &str
 }
 
 
+/// Generates a PKCE challenge if the provider supports PKCE, otherwise returns `None`
 fn maybe_generate_pkce_challenge(
     use_pkce: bool
 ) -> Option<PkceChallenge> {
@@ -129,6 +131,7 @@ fn maybe_generate_pkce_challenge(
 }
 
 
+/// Extracts the PKCE code challenge and verifier as borrowed string slices if present
 fn borrow_pkce_fields(
     pkce_challenge : Option<&PkceChallenge>
 ) -> (Option<&str>, Option<&str>) {
@@ -145,6 +148,7 @@ fn borrow_pkce_fields(
 }
 
 
+/// Validates the OAuth callback, ensuring state integrity and extracting the authorization code
 fn verify_callback(
     callback: OAuth2Callback,
     expected_state: &str,

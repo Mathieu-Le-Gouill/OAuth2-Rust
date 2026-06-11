@@ -12,7 +12,9 @@ use crate::engine::OAuthError;
 
 use std::env;
 
-
+/// Represents a fully initialized OAuth provider instance used at runtime
+/// Combines static provider metadata (identity and endpoints) 
+/// with dynamic credentials loaded from configuration or environment variables
 #[derive(Debug, Clone)]
 pub struct Provider {
     pub identity: &'static ProviderIdentity,
@@ -23,20 +25,28 @@ pub struct Provider {
 
 #[derive(Debug, Clone, Copy)]
 pub struct ProviderEndpoints {
+    /// Provider authorization endpoint
     pub auth_url: &'static str,
+
+    /// Provider token endpoint
     pub token_url: &'static str,
+
+    // Provider user info API endpoint
     pub fetch_url: &'static str,
 }
 
 
 #[derive(Debug, Clone)]
 pub struct ProviderCredentials {
+    // Client identifier issued by the OAuth2 provider
     pub client_id: String,
+
+    /// Client secret issued by the OAuth2 provider (None for public clients)
     pub client_secret: Option<String>,
 }
 
 
-/// Everything the OAuth flow needs to know about one provider.
+/// Everything the OAuth flow needs to know about one provider
 #[derive(Debug, Clone, Copy)]
 pub struct ProviderIdentity {
     /// Provider name
@@ -66,6 +76,33 @@ pub static PROVIDERS_SPECS: &[(ProviderIdentity, ProviderEndpoints)] = &[
 
 
 impl Provider {
+
+    /// Builds a `Provider` from the static provider registry and environment variables
+    ///
+    /// This function resolves a provider by name, then constructs a fully initialized
+    /// runtime `Provider` instance by combining:
+    ///
+    /// - Static provider metadata (identity + endpoints)
+    /// - Runtime credentials loaded from environment variables
+    ///
+    /// # Environment variables
+    ///
+    /// The following variables are expected based on the provider name:
+    ///
+    /// - `{PROVIDER_NAME}_CLIENT_ID` (required)
+    /// - `{PROVIDER_NAME}_CLIENT_SECRET` (required only if the provider is confidential)
+    ///
+    /// Example for GitHub:
+    /// - `GITHUB_CLIENT_ID`
+    /// - `GITHUB_CLIENT_SECRET`
+    ///
+    /// # Parameters
+    ///
+    /// - `name`: The provider identifier (e.g. `"github"`, `"gmail"`, `"outlook"`)
+    ///
+    /// # Returns
+    ///
+    /// A fully initialized `Provider` ready to be used in the OAuth flow or an OAuthError
     pub fn from_env(name: &str) -> Result<Self, OAuthError> {
         let (identity, endpoints) = PROVIDERS_SPECS
             .iter()

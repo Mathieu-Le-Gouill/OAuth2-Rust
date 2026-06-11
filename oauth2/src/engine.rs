@@ -19,7 +19,7 @@ use url::Url;
 
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
-/// OAuth2 client configuration
+/// OAuth2 Engine configuration
 #[derive(Debug, Clone)]
 pub struct OAuth2Engine {
     pub http: reqwest::Client,

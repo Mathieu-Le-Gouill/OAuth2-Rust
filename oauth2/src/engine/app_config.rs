@@ -1,3 +1,7 @@
+/// OAuth application configuration.
+///
+/// Defines the base redirect URI used
+/// to receive OAuth authorization callbacks
 pub struct OAuthAppConfig {
     pub base_redirect_uri: String,
 }
@@ -9,6 +13,11 @@ impl OAuthAppConfig {
         }
     }
 
+    /// Builds the provider-specific redirect URI
+    ///
+    /// The provider name is appended to the configured base redirect URI,
+    /// allowing a single application to support multiple OAuth providers
+    /// while exposing distinct callback routes
     pub fn redirect_uri(&self, provider: &'static str) -> String {
         format!("{}/{}", self.base_redirect_uri.trim_end_matches('/'), provider)
     }
