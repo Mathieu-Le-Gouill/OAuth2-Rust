@@ -1,26 +1,46 @@
 mod github;
 mod outlook;
 mod gmail;
+mod registry;
 
-use github::GITHUB;
-use outlook::OUTLOOK;
-use gmail::GMAIL;
-use crate::client::{OAuth2Client, OAuthError};
+pub use github::{GITHUB_IDENTITY, GITHUB_ENDPOINTS};
+pub use outlook::{OUTLOOK_IDENTITY, OUTLOOK_ENDPOINTS};
+pub use gmail::{GMAIL_IDENTITY, GMAIL_ENDPOINTS};
+pub use registry::Registry;
+
+use crate::engine::OAuthError;
+
+use std::env;
+
+
+#[derive(Debug, Clone)]
+pub struct Provider {
+    pub identity: &'static ProviderIdentity,
+    pub endpoints: &'static ProviderEndpoints,
+    pub credentials: ProviderCredentials,
+}
+
+
+#[derive(Debug, Clone, Copy)]
+pub struct ProviderEndpoints {
+    pub auth_url: &'static str,
+    pub token_url: &'static str,
+    pub fetch_url: &'static str,
+}
+
+
+#[derive(Debug, Clone)]
+pub struct ProviderCredentials {
+    pub client_id: String,
+    pub client_secret: Option<String>,
+}
+
 
 /// Everything the OAuth flow needs to know about one provider.
 #[derive(Debug, Clone, Copy)]
-pub struct ProviderConfig {
+pub struct ProviderIdentity {
     /// Provider name
     pub name: &'static str,
-
-    /// Provider authorization endpoint
-    pub auth_url: &'static str,
-
-    /// Provider token endpoint
-    pub token_url: &'static str,
-
-    // Provider API endpoint
-    pub fetch_url: &'static str,
 
     /// Space- or comma-separated scope string (provider-specific separator).
     pub scopes: &'static str,
@@ -33,48 +53,43 @@ pub struct ProviderConfig {
     /// for token exchange). `false` means public-client / PKCE-only - no secret needed.
     pub confidential: bool,
 
-    /// Name of the env var holding the client identifier (e.g. "GITHUB_CLIENT_ID").
-    pub client_id_env: &'static str,
-
-    /// Name of the env var holding the client secret (e.g. "GITHUB_CLIENT_SECRET").
-    /// `None` for public clients that never use a secret.
-    pub client_secret_env: Option<&'static str>,
-
     // Extra query params appended to the authorize URL (e.g. offline access).
     //pub extra_auth_params: &'static [(&'static str, &'static str)],
 }
 
 
-impl ProviderConfig {
+pub static PROVIDERS_SPECS: &[(ProviderIdentity, ProviderEndpoints)] = &[
+    (GITHUB_IDENTITY, GITHUB_ENDPOINTS), 
+    (OUTLOOK_IDENTITY, OUTLOOK_ENDPOINTS),
+    (GMAIL_IDENTITY, GMAIL_ENDPOINTS)
+];
 
-    /// Build an OAuth2Client from the Provider Configuration.
-    /// Reads client_id and client_secret from the environment at runtime.
-    pub fn into_client(&self, redirect_uri: &str) -> Result<OAuth2Client, OAuthError> {
-        let client_id = std::env::var(self.client_id_env)
-            .map_err(|_| OAuthError::InvalidClientID(format!("{} env var not set", self.client_id_env)))?;
 
-        let client_secret = if self.confidential {
-            let key = self.client_secret_env.ok_or_else(|| {
-                OAuthError::InvalidClientSecret(format!("Confidential provider '{}' has no client_secret_env defined", self.name))
-            })?;
-            Some(std::env::var(key).map_err(|_| OAuthError::InvalidClientSecret(format!("{} env var not set", key)))?)
+impl Provider {
+    pub fn from_env(name: &str) -> Result<Self, OAuthError> {
+        let (identity, endpoints) = PROVIDERS_SPECS
+            .iter()
+            .find(|(identity, _)| identity.name == name)
+            .ok_or_else(|| OAuthError::UnknownProvider(name.to_string()))?;
+
+        let client_secret = if identity.confidential {
+            Some(
+                env::var(format!("{}_CLIENT_SECRET", identity.name.to_uppercase()))
+                    .map_err(|e| OAuthError::InvalidClientSecret(e.to_string()))?
+            )
         } else {
-            self.client_secret_env.and_then(|key| std::env::var(key).ok())
+            None
         };
 
-        Ok(OAuth2Client::new(
-            client_id,
-            client_secret,
-            self.auth_url,
-            self.token_url,
-            redirect_uri.to_owned(),
-        ))
+        Ok(Self {
+            identity: identity,
+            credentials: ProviderCredentials {
+                client_id: env::var(identity.name.to_uppercase() + "_CLIENT_ID")
+                    .map_err(|e| OAuthError::InvalidClientID(e.to_string()))?,
+
+                client_secret: client_secret
+            },
+            endpoints: endpoints
+        })
     }
 }
-
-
-pub static PROVIDERS: &[ProviderConfig] = &[
-    GITHUB,
-    OUTLOOK,
-    GMAIL
-];

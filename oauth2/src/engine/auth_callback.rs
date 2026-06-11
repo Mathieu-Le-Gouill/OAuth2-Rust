@@ -47,7 +47,7 @@ impl OAuth2Callback {
         let (mut stream, _) = timeout(Duration::from_secs(120), listener.accept())
             .await
             .map_err(|_| OAuthError::CallbackTimeout("Timed out waiting for OAuth callback".into()))?
-            .map_err(|e| OAuthError::CallbackServer(format!("Failed to accept connection: {}", e)))?;
+            .map_err(|e| OAuthError::OAuthDenied(format!("Failed to accept connection: {}", e)))?;
 
         // Read the incoming HTTP request
         let mut buf = [0u8; 4096];
