@@ -1,4 +1,4 @@
-# OAuth 2.0 — Authorization Code Flow
+# OAuth 2.0 - Rust
 
 Rust implementation of an OAuth 2.0 client supporting the Authorization Code flow, with or without PKCE, for multiple providers (GitHub, Gmail, Outlook).
 
@@ -23,7 +23,7 @@ Client                      Browser/User                  Provider
 
 ---
 
-## Step 1 — Authorization Request
+## Step 1 - Authorization Request
 
 The client redirects the user to the provider's authorization server.
 
@@ -44,7 +44,7 @@ The client redirects the user to the provider's authorization server.
 | `redirect_uri` | ✅ | Callback URL after authorization; must exactly match the pre-registered URI |
 | `scope` | Recommended | Space-separated (or `+`) list of requested permissions |
 | `state` | Recommended | Randomly generated opaque value to prevent CSRF attacks |
-| `code_challenge` | PKCE ✅ | Hash of the `code_verifier` (S256 method) — required if the provider enforces PKCE |
+| `code_challenge` | PKCE ✅ | Hash of the `code_verifier` (S256 method) - required if the provider enforces PKCE |
 | `code_challenge_method` | PKCE ✅ | Hash method: `S256` (SHA-256, recommended) or `plain` |
 | `access_type` | Google | `offline` to obtain a `refresh_token` |
 
@@ -64,7 +64,7 @@ GET https://accounts.google.com/o/oauth2/v2/auth
 
 ---
 
-## Step 2 — Authorization Response (code)
+## Step 2 - Authorization Response (code)
 
 After the user grants access, the provider redirects to the `redirect_uri` with:
 
@@ -73,7 +73,7 @@ After the user grants access, the provider redirects to the `redirect_uri` with:
 | Parameter | Description |
 |-----------|-------------|
 | `code` | Short-lived authorization code (typically 10 min). To be used **only once** |
-| `state` | The `state` value from the initial request — **must be verified** before proceeding |
+| `state` | The `state` value from the initial request - **must be verified** before proceeding |
 
 ### Example
 
@@ -99,7 +99,7 @@ GET http://localhost:8080/callback
 
 ---
 
-## Step 3 — Token Request (code exchange)
+## Step 3 - Token Request (code exchange)
 
 The client exchanges the `code` for tokens via a server-to-server request (never exposed to the browser).
 
@@ -138,17 +138,17 @@ grant_type=authorization_code
 
 ---
 
-## Step 4 — Token Response
+## Step 4 - Token Response
 
 ### JSON Response Fields
 
 | Field | Required | Description |
 |-------|:--------:|-------------|
 | `access_token` | ✅ | Access token to include in API calls |
-| `token_type` | ✅ | Token type — typically `Bearer` |
+| `token_type` | ✅ | Token type - typically `Bearer` |
 | `expires_in` | Recommended | Token lifetime in seconds |
 | `refresh_token` | Optional | Renewal token (not issued for implicit flow or if `offline` was not requested) |
-| `scope` | Optional | Granted scope — required if it differs from the requested scope |
+| `scope` | Optional | Granted scope - required if it differs from the requested scope |
 | `id_token` | OpenID Connect | JWT containing the user's identity information |
 
 ### Example Response (Gmail)
@@ -165,7 +165,7 @@ grant_type=authorization_code
 
 ---
 
-## Step 5 — Userinfo Request
+## Step 5 - Userinfo Request
 
 Optional call to retrieve the user's profile using the obtained token.
 
@@ -194,7 +194,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-## Step 6 — Refresh Token
+## Step 6 - Refresh Token
 
 When the `access_token` expires, the client can obtain a new one without user interaction.
 
@@ -216,7 +216,7 @@ Same as step 4. A new `refresh_token` may be issued (rotation).
 
 ---
 
-## PKCE — Proof Key for Code Exchange
+## PKCE - Proof Key for Code Exchange
 
 PKCE (RFC 7636) protects the Authorization Code flow against code interception. Required for public clients (mobile, desktop), recommended for all.
 
@@ -280,9 +280,9 @@ Copy `.env.example` to `.env` and fill in the values.
 
 ## References
 
-- [RFC 6749 — OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749)
-- [RFC 7636 — PKCE](https://datatracker.ietf.org/doc/html/rfc7636)
+- [RFC 6749 - OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc6749)
+- [RFC 7636 - PKCE](https://datatracker.ietf.org/doc/html/rfc7636)
 - [GitHub oauth2-rs](https://github.com/ramosbugs/oauth2-rs/)
 - [GitHub OAuth Apps](https://docs.github.com/en/apps/oauth-apps)
-- [Google Identity — OAuth 2.0](https://developers.google.com/identity/protocols/oauth2)
+- [Google Identity - OAuth 2.0](https://developers.google.com/identity/protocols/oauth2)
 - [Microsoft Identity Platform](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow)
