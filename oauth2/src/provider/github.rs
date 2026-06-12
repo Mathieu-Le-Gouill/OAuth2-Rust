@@ -1,15 +1,14 @@
-use super::{ProviderEndpoints, ProviderIdentity};
+use super::{ProviderEndpoints, ProviderIdentity, NO_EXTRA};
 
 // ── GitHub ──
 // Confidential client (OAuth Apps require client_secret; no PKCE support).
 pub static GITHUB_IDENTITY: ProviderIdentity = ProviderIdentity {
     name: "github",
 
-    scopes: "repo:status,read:user",
+    scopes: "repo:status read:user",
     uses_pkce: false,
-    confidential: true
-
-    //extra_auth_params: NO_EXTRA
+    confidential: true,
+    extra_auth_params: NO_EXTRA,
 };
 
 pub static GITHUB_ENDPOINTS: ProviderEndpoints = ProviderEndpoints {

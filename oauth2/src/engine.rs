@@ -81,6 +81,10 @@ impl OAuth2Engine {
                 .append_pair("code_challenge_method", "S256");
         }
 
+        for (key, value) in provider.identity.extra_auth_params {
+            url.query_pairs_mut().append_pair(key, value);
+        }
+
         url.to_string()
     }
     

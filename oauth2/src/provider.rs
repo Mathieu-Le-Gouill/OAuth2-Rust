@@ -63,9 +63,11 @@ pub struct ProviderIdentity {
     /// for token exchange). `false` means public-client / PKCE-only - no secret needed.
     pub confidential: bool,
 
-    // Extra query params appended to the authorize URL (e.g. offline access).
-    //pub extra_auth_params: &'static [(&'static str, &'static str)],
+    /// Extra query params appended to the authorize URL (e.g. `access_type=offline`).
+    pub extra_auth_params: &'static [(&'static str, &'static str)],
 }
+
+pub static NO_EXTRA: &[(&str, &str)] = &[];
 
 
 pub static PROVIDERS_SPECS: &[(ProviderIdentity, ProviderEndpoints)] = &[

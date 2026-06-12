@@ -1,5 +1,7 @@
 use super::{ProviderEndpoints, ProviderIdentity};
 
+static GOOGLE_OFFLINE: &[(&str, &str)] = &[("access_type", "offline")];
+
 // ── Google (Gmail, Calendar, Meet, Docs) ──
 // Confidential client: "Desktop app" type in Google Cloud Console requires a
 // client_secret for token exchange. Secret is held by auth-proxy, not bundled.
@@ -8,9 +10,8 @@ pub static GMAIL_IDENTITY: ProviderIdentity = ProviderIdentity {
 
     scopes: "https://mail.google.com/ https://www.googleapis.com/auth/gmail.readonly",
     uses_pkce: true,
-    confidential: true
-    
-    //extra_auth_params: GOOGLE_OFFLINE
+    confidential: true,
+    extra_auth_params: GOOGLE_OFFLINE,
 };
         
 

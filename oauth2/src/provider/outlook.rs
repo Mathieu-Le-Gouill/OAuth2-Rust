@@ -1,4 +1,4 @@
-use super::{ProviderEndpoints, ProviderIdentity};
+use super::{ProviderEndpoints, ProviderIdentity, NO_EXTRA};
 
 // ── Outlook ──
 // Use PKCE + client_secret when the app is a confidential client (web/server type);
@@ -8,9 +8,8 @@ pub static OUTLOOK_IDENTITY: ProviderIdentity = ProviderIdentity {
 
     scopes: "Mail.Read Calendars.Read offline_access User.Read",
     uses_pkce: true,
-    confidential: false
-
-    //extra_auth_params: NO_EXTRA
+    confidential: false,
+    extra_auth_params: NO_EXTRA,
 };
 
 
