@@ -2,6 +2,7 @@
 ///
 /// Defines the base redirect URI used
 /// to receive OAuth authorization callbacks
+#[derive(Debug, Clone)]
 pub struct OAuthAppConfig {
     pub base_redirect_uri: String,
 }

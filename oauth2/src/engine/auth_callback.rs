@@ -49,14 +49,23 @@ impl OAuth2Callback {
             .map_err(|_| OAuthError::CallbackTimeout("Timed out waiting for OAuth callback".into()))?
             .map_err(|e| OAuthError::OAuthDenied(format!("Failed to accept connection: {}", e)))?;
 
-        // Read the incoming HTTP request
-        let mut buf = [0u8; 4096];
-        let n = stream.read(&mut buf).await
-            .map_err(|e| OAuthError::CallbackServer(format!("Failed to read request: {}", e)))?;
-
-        // Convert raw bytes into a UTF-8 string
-        let request = std::str::from_utf8(&buf[..n])
-            .map_err(|_| OAuthError::CallbackServer("Invalid UTF-8 in HTTP request".into()))?;
+        // Read the incoming HTTP request in a loop to handle partial reads.
+        // Stop at end-of-headers; cap at 8 KB to prevent memory exhaustion.
+        let mut request = String::new();
+        let mut buf = [0u8; 1024];
+        loop {
+            let n = stream.read(&mut buf).await
+                .map_err(|e| OAuthError::CallbackServer(format!("Failed to read request: {}", e)))?;
+            if n == 0 { break; }
+            let chunk = std::str::from_utf8(&buf[..n])
+                .map_err(|_| OAuthError::CallbackServer("Invalid UTF-8 in HTTP request".into()))?;
+            request.push_str(chunk);
+            if request.contains("\r\n\r\n") { break; }
+            if request.len() > 8192 {
+                return Err(OAuthError::CallbackServer("HTTP request too large".into()));
+            }
+        }
+        let request = request.as_str();
 
         let path = extract_path(request)
             .map_err(OAuthError::CallbackServer)?;
@@ -82,6 +91,21 @@ impl OAuth2Callback {
         Ok(callback)
     }
 
+
+    /// Verifies the CSRF state and returns the authorization code on success.
+    pub fn verify_state(self, expected_state: &str) -> Result<String, OAuthError> {
+        match self {
+            Self::Success { code, state } => {
+                if state.as_deref() != Some(expected_state) {
+                    return Err(OAuthError::StateMismatch);
+                }
+                Ok(code)
+            }
+            Self::Error { error, .. } => Err(error),
+        }
+    }
+
+    
     /// Parses OAuth2 redirect query parameters into a callback result
     /// Supports success (`code`) and error (`error`) responses from the provider
     fn from_query_pairs<'a>(

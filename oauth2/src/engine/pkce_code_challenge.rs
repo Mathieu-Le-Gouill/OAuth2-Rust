@@ -23,6 +23,11 @@ pub struct PkceChallenge {
 
 
 impl PkceChallenge {
+    /// Returns `(code_challenge, code_verifier)` as string slices.
+    pub fn borrow_fields(&self) -> (&str, &str) {
+        (self.code_challenge.as_str(), self.code_verifier.as_str())
+    }
+
     /// Generate a fresh PKCE pair with 32 bytes of entropy
     /// code_verifier  = BASE64URL(32 random bytes) - high-entropy string
     /// code_challenge = BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))

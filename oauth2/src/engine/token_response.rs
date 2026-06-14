@@ -18,5 +18,9 @@ pub struct TokenResponse {
 
     /// The granted scope issued by the OAuth2 provider
     /// Required if it differs from the requested scope
-    pub scope: Option<String>
+    pub scope: Option<String>,
+
+    /// The OIDC ID token returned by OIDC-capable providers (e.g. Google, Microsoft)
+    /// when the `openid` scope is requested. `None` for non-OIDC providers.
+    pub id_token: Option<String>,
 }

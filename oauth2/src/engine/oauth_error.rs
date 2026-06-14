@@ -31,4 +31,13 @@ pub enum OAuthError {
 
     #[error("invalid client secret: {0}")]
     InvalidClientSecret(String),
+
+    #[error("OIDC id_token missing from token response")]
+    MissingIdToken,
+
+    #[error("nonce mismatch - possible replay attack")]
+    NonceMismatch,
+
+    #[error("JWT verification failed: {0}")]
+    JwtVerification(String),
 }

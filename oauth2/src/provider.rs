@@ -13,7 +13,7 @@ use crate::engine::OAuthError;
 use std::env;
 
 /// Represents a fully initialized OAuth provider instance used at runtime
-/// Combines static provider metadata (identity and endpoints) 
+/// Combines static provider metadata (identity and endpoints)
 /// with dynamic credentials loaded from configuration or environment variables
 #[derive(Debug, Clone)]
 pub struct Provider {
@@ -46,6 +46,22 @@ pub struct ProviderCredentials {
 }
 
 
+/// OIDC-specific configuration, present only for providers that support OpenID Connect
+#[derive(Debug, Clone, Copy)]
+pub struct OidcConfig {
+    /// Expected `iss` claim in the ID token. `None` skips the issuer check.
+    pub issuer: Option<&'static str>,
+
+    /// When `true`, issuer check uses prefix match instead of exact equality.
+    /// Used for multi-tenant providers (e.g. Microsoft) where the tenant ID is
+    /// embedded in the issuer URL.
+    pub issuer_is_prefix: bool,
+
+    /// JWKS endpoint for verifying ID token signatures.
+    pub jwks_uri: &'static str,
+}
+
+
 /// Everything the OAuth flow needs to know about one provider
 #[derive(Debug, Clone, Copy)]
 pub struct ProviderIdentity {
@@ -65,13 +81,17 @@ pub struct ProviderIdentity {
 
     /// Extra query params appended to the authorize URL (e.g. `access_type=offline`).
     pub extra_auth_params: &'static [(&'static str, &'static str)],
+
+    /// OIDC configuration. `Some` if the provider supports OpenID Connect and returns
+    /// an `id_token`; `None` for plain OAuth2 providers (e.g. GitHub).
+    pub oidc: Option<OidcConfig>,
 }
 
 pub static NO_EXTRA: &[(&str, &str)] = &[];
 
 
 pub static PROVIDERS_SPECS: &[(ProviderIdentity, ProviderEndpoints)] = &[
-    (GITHUB_IDENTITY, GITHUB_ENDPOINTS), 
+    (GITHUB_IDENTITY, GITHUB_ENDPOINTS),
     (OUTLOOK_IDENTITY, OUTLOOK_ENDPOINTS),
     (GMAIL_IDENTITY, GMAIL_ENDPOINTS)
 ];
