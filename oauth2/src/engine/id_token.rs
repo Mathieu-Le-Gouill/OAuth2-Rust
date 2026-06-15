@@ -3,12 +3,15 @@ use serde::Deserialize;
 use crate::provider::OidcConfig;
 use super::OAuthError;
 
+
 #[derive(Deserialize)]
 struct IdTokenClaims {
     iss: String,
     sub: String,
     nonce: Option<String>,
+    // aud and exp verified in jsonwebtoken::decoding
 }
+
 
 /// Verifies an OIDC ID token against the provider's JWKS and returns the `sub` claim
 ///
@@ -29,13 +32,16 @@ pub fn verify(
 
     let key = resolve_key(jwks, &header)?;
 
+    // To validate: exp, alg and aud
     let mut validation = Validation::new(header.alg);
     validation.set_audience(&[client_id]);
 
+    // Verify the id token signature and validation -> return the claims
     let claims = decode::<IdTokenClaims>(id_token, &key, &validation)
         .map_err(|e| OAuthError::JwtVerification(e.to_string()))?
         .claims;
 
+    // Manually validate iss, sub and nonce
     validate_claims(&claims, oidc_config, expected_nonce)
         .map(|()| claims.sub)
 }
