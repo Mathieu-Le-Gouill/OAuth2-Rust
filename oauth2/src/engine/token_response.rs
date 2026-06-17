@@ -3,17 +3,17 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct TokenResponse {
 
-    /// The acess token issued by the OAuth2 provider
+    /// The access token issued by the OAuth2 provider
     pub access_token: String,
 
-    /// The acess token type: typically the string "Bearer"
+    /// The access token type: typically the string "Bearer"
     pub token_type: String,
 
     /// The access token lifetime in seconds
     pub expires_in: Option<u64>,
 
     /// The refresh token issued by the OAuth2 provider
-    /// Used to obtain a new acess token after the current one expire
+    /// Used to obtain a new access token after the current one expires
     pub refresh_token: Option<String>,
 
     /// The granted scope issued by the OAuth2 provider

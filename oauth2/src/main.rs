@@ -40,8 +40,10 @@ async fn main() {
                 Some(secs) => println!("Token expires in: {}s", secs),
                 None => println!("Token does not expire"),
             }
-            dbg!(result.scope);
-            dbg!(result.user_info);
+            if let Some(scope) = result.scope {
+                println!("Scope: {}", scope);
+            }
+            println!("User info:\n{:#}", result.user_info);
         }
         Err(e) => {
             eprintln!("Error: {}", e);

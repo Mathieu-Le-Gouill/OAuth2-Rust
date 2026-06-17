@@ -15,11 +15,8 @@ pub enum OAuth2Callback {
         state: Option<String>,
     },
     Error {
-        /// OAuth2 error code (access_denied, ...)
+        /// OAuth2 error code with optional human-readable description
         error: OAuthError,
-
-        /// Human-readable error description (if provided by provider)
-        error_description: Option<String>,
 
         /// Optional state returned by provider (if any)
         state: Option<String>,
@@ -47,7 +44,7 @@ impl OAuth2Callback {
         let (mut stream, _) = timeout(Duration::from_secs(120), listener.accept())
             .await
             .map_err(|_| OAuthError::CallbackTimeout("Timed out waiting for OAuth callback".into()))?
-            .map_err(|e| OAuthError::OAuthDenied(format!("Failed to accept connection: {}", e)))?;
+            .map_err(|e| OAuthError::CallbackServer(format!("Failed to accept connection: {}", e)))?;
 
         // Read the incoming HTTP request in a loop to handle partial reads.
         // Stop at end-of-headers; cap at 8 KB to prevent memory exhaustion.
@@ -135,9 +132,12 @@ impl OAuth2Callback {
         }
 
         if let Some(error) = error {
+            let msg = match error_description.as_deref() {
+                Some(desc) => format!("{}: {}", error, desc),
+                None => String::from(error),
+            };
             return Ok(Self::Error {
-                error: OAuthError::CallbackServer(String::from(error)),
-                error_description: error_description.map(|e| e.into_owned()),
+                error: OAuthError::OAuthDenied(msg),
                 state: state.map(|s| s.into_owned()),
             });
         }

@@ -31,7 +31,7 @@ pub struct ProviderEndpoints {
     /// Provider token endpoint
     pub token_url: &'static str,
 
-    // Provider user info API endpoint
+    /// Provider user info API endpoint
     pub fetch_url: &'static str,
 }
 
@@ -144,14 +144,13 @@ impl Provider {
         };
 
         Ok(Self {
-            identity: identity,
+            identity,
             credentials: ProviderCredentials {
                 client_id: env::var(identity.name.to_uppercase() + "_CLIENT_ID")
                     .map_err(|e| OAuthError::InvalidClientID(e.to_string()))?,
-
-                client_secret: client_secret
+                client_secret,
             },
-            endpoints: endpoints
+            endpoints,
         })
     }
 }

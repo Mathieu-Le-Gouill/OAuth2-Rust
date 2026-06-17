@@ -1,5 +1,5 @@
 pub mod pkce_code_challenge;
-pub mod crsf_token;
+pub mod csrf_token;
 pub mod token_response;
 pub mod auth_callback;
 pub mod oauth_error;
@@ -10,10 +10,10 @@ pub mod dpop;
 
 pub use token_response::TokenResponse;
 pub use pkce_code_challenge::PkceChallenge;
-pub use crsf_token::CsrfToken;
+pub use csrf_token::CsrfToken;
 pub use auth_callback::OAuth2Callback;
 pub use oauth_error::OAuthError;
-pub use dpop::{create_dpop_proof, generate_dpop_key_pair};
+pub use dpop::dpop_proof;
 
 use app_config::OAuthAppConfig;
 use crate::provider::Provider;
@@ -83,7 +83,7 @@ impl OAuth2Engine {
 
         let token = self.exchange_code(provider, code.as_str(), code_verifier).await?;
 
-        let sub = if let Some(oidc) = &provider.identity.oidc {
+        let sub = if let Some(_oidc) = &provider.identity.oidc {
             let id_token = token.id_token.as_deref()
                 .ok_or(OAuthError::MissingIdToken)?;
             let expected_nonce = nonce.as_ref()
@@ -91,7 +91,6 @@ impl OAuth2Engine {
                 .as_str();
             let sub = self.verify_id_token(provider, id_token, expected_nonce).await?;
             println!("ID token verified (signature + claims + nonce)");
-            let _ = oidc;
             Some(sub)
         } else {
             None
@@ -211,12 +210,7 @@ impl OAuth2Engine {
             params.push(("code_verifier", verifier));
         }
 
-        let dpop_proof = if provider.identity.uses_dpop {
-            let key_pair = generate_dpop_key_pair()?;
-            Some(create_dpop_proof(&key_pair, "POST", token_url)?)
-        } else {
-            None
-        };
+        let dpop_proof = dpop_proof(provider.identity.uses_dpop, token_url)?;
 
         self.post_token_request(
             token_url,
@@ -247,8 +241,8 @@ impl OAuth2Engine {
         refresh_token: &str
     ) -> Result<TokenResponse, OAuthError> {
 
-        let client_id: &String = &provider.credentials.client_id;
-        let client_secret: &Option<String> = &provider.credentials.client_secret;
+        let client_id = &provider.credentials.client_id;
+        let client_secret = &provider.credentials.client_secret;
 
         let token_url = provider.endpoints.token_url;
 
@@ -262,12 +256,7 @@ impl OAuth2Engine {
             params.push(("client_secret", secret.as_str()));
         }
 
-        let dpop_proof = if provider.identity.uses_dpop {
-            let key_pair = generate_dpop_key_pair()?;
-            Some(create_dpop_proof(&key_pair, "POST", token_url)?)
-        } else {
-            None
-        };
+        let dpop_proof = dpop_proof(provider.identity.uses_dpop, token_url)?;
 
         self.post_token_request(
             token_url,

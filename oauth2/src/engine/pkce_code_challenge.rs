@@ -1,13 +1,9 @@
-use serde::{Deserialize, Serialize};
-
-
-
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 /// Represents a PKCE (Proof Key for Code Exchange) challenge pair used in OAuth2.
 ///
 /// This structure contains both the high-entropy `code_verifier` and the derived

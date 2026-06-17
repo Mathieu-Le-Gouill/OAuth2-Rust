@@ -1,17 +1,16 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use jsonwebtoken::{
-    Algorithm, DecodingKey, EncodingKey, Header, encode,
+    Algorithm, EncodingKey, Header, encode,
     jwk::{AlgorithmParameters, CommonParameters, EllipticCurve, EllipticCurveKeyParameters, EllipticCurveKeyType, Jwk},
 };
 use p256::ecdsa::SigningKey;
-use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
+use p256::pkcs8::{EncodePrivateKey, LineEnding};
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::engine::{CsrfToken, OAuthError};
 
 
 pub struct DpopKeyPair {
     pub private_key: EncodingKey,
-    pub public_key: DecodingKey,
     pub jwk: Jwk,
 }
 
@@ -21,6 +20,7 @@ pub struct DpopClaims {
     pub htm: String,
     pub htu: String,
     pub iat: usize,
+    pub exp: usize,
     pub jti: String,
 }
 
@@ -34,14 +34,9 @@ pub fn generate_dpop_key_pair() -> Result<DpopKeyPair, OAuthError> {
     let private_pem = signing_key
         .to_pkcs8_pem(LineEnding::LF)
         .map_err(|e| OAuthError::DPoPVerification(e.to_string()))?;
-    let public_pem = verifying_key
-        .to_public_key_pem(LineEnding::LF)
-        .map_err(|e| OAuthError::DPoPVerification(e.to_string()))?;
 
     // Format to jsonwebtoken EncodingKey and DecodingKey
     let encoding_key = EncodingKey::from_ec_pem(private_pem.as_bytes())
-        .map_err(|e| OAuthError::DPoPVerification(e.to_string()))?;
-    let decoding_key = DecodingKey::from_ec_pem(public_pem.as_bytes())
         .map_err(|e| OAuthError::DPoPVerification(e.to_string()))?;
 
     // Extract uncompressed point coordinates for the public JWK
@@ -59,12 +54,12 @@ pub fn generate_dpop_key_pair() -> Result<DpopKeyPair, OAuthError> {
         }),
     };
 
-    Ok(DpopKeyPair { private_key: encoding_key, public_key: decoding_key, jwk })
+    Ok(DpopKeyPair { private_key: encoding_key, jwk })
 }
 
 
-/// Creates a DPoP proof JWT for the given HTTP method and URI
-pub fn create_dpop_proof(
+/// Signs a DPoP proof JWT for the given HTTP method and URI using the provided key pair
+pub fn sign_dpop_proof(
     key_pair: &DpopKeyPair,
     http_method: &str,
     http_uri: &str,
@@ -92,9 +87,20 @@ pub fn create_dpop_proof(
         htm: http_method.to_uppercase(),
         htu: http_uri.into(),
         iat: now,
+        exp: now + 60,
         jti: CsrfToken::new_random().as_str().into(),
     };
 
     encode(&header, &claims, &key_pair.private_key)
         .map_err(|e| OAuthError::DPoPVerification(e.to_string()))
+}
+
+
+
+pub fn dpop_proof(uses_dpop: bool, url: &str) -> Result<Option<String>, OAuthError> {
+    if !uses_dpop {
+        return Ok(None);
+    }
+    let key_pair = generate_dpop_key_pair()?;
+    sign_dpop_proof(&key_pair, "POST", url).map(Some)
 }

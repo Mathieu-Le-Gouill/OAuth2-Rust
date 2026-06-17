@@ -4,7 +4,7 @@
 /// to receive OAuth authorization callbacks
 #[derive(Debug, Clone)]
 pub struct OAuthAppConfig {
-    pub base_redirect_uri: String,
+    base_redirect_uri: String,
 }
 
 impl OAuthAppConfig {
