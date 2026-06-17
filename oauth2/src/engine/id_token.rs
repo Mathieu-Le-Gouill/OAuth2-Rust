@@ -70,6 +70,7 @@ fn validate_algorithm(alg: Algorithm) -> Result<(), OAuthError> {
 fn resolve_key(jwks: &JwkSet, header: &Header) -> Result<DecodingKey, OAuthError> {
     let kid = header.kid.as_deref().unwrap_or("");
 
+    // Find the public key matching the key id
     let jwk = jwks.find(kid).ok_or_else(|| {
         OAuthError::JwtVerification(format!("missing kid={:?}", header.kid))
     })?;

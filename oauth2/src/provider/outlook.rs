@@ -10,6 +10,7 @@ pub static OUTLOOK_IDENTITY: ProviderIdentity = ProviderIdentity {
     uses_pkce: true,
     confidential: false,
     extra_auth_params: NO_EXTRA,
+    uses_dpop: true,
     oidc: Some(OidcConfig {
         // Microsoft common endpoint embeds the tenant ID in the issuer, e.g.
         // "https://login.microsoftonline.com/{tid}/v2.0" — use prefix match.

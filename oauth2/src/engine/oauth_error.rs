@@ -40,4 +40,7 @@ pub enum OAuthError {
 
     #[error("JWT verification failed: {0}")]
     JwtVerification(String),
+
+    #[error("DPoP proof verification failed: {0}")]
+    DPoPVerification(String),
 }

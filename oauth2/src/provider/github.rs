@@ -9,6 +9,7 @@ pub static GITHUB_IDENTITY: ProviderIdentity = ProviderIdentity {
     uses_pkce: false,
     confidential: true,
     extra_auth_params: NO_EXTRA,
+    uses_dpop: false,
     oidc: None,
 };
 

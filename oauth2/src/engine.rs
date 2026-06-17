@@ -3,8 +3,9 @@ pub mod crsf_token;
 pub mod token_response;
 pub mod auth_callback;
 pub mod oauth_error;
-mod app_config;
+pub mod app_config;
 pub mod id_token;
+pub mod dpop;
 
 
 pub use token_response::TokenResponse;
@@ -12,6 +13,7 @@ pub use pkce_code_challenge::PkceChallenge;
 pub use crsf_token::CsrfToken;
 pub use auth_callback::OAuth2Callback;
 pub use oauth_error::OAuthError;
+pub use dpop::{create_dpop_proof, generate_dpop_key_pair};
 
 use app_config::OAuthAppConfig;
 use crate::provider::Provider;
@@ -209,10 +211,17 @@ impl OAuth2Engine {
             params.push(("code_verifier", verifier));
         }
 
-        // Send exchange request
+        let dpop_proof = if provider.identity.uses_dpop {
+            let key_pair = generate_dpop_key_pair()?;
+            Some(create_dpop_proof(&key_pair, "POST", token_url)?)
+        } else {
+            None
+        };
+
         self.post_token_request(
             token_url,
             &params,
+            dpop_proof.as_deref(),
             |e| OAuthError::TokenExchange(e.to_string())
         ).await
     }
@@ -253,9 +262,17 @@ impl OAuth2Engine {
             params.push(("client_secret", secret.as_str()));
         }
 
+        let dpop_proof = if provider.identity.uses_dpop {
+            let key_pair = generate_dpop_key_pair()?;
+            Some(create_dpop_proof(&key_pair, "POST", token_url)?)
+        } else {
+            None
+        };
+
         self.post_token_request(
             token_url,
             &params,
+            dpop_proof.as_deref(),
             |e| OAuthError::TokenRefresh(e.to_string())
         ).await
     }
@@ -349,15 +366,22 @@ impl OAuth2Engine {
         &self,
         token_url: &str,
         params: &[(&str, &str)],
-        map_err: F
+        dpop_proof: Option<&str>,
+        map_err: F,
     ) -> Result<TokenResponse, OAuthError>
     where
     F: Fn(reqwest::Error) -> OAuthError {
 
-        self.http
+        let mut builder = self.http
             .post(token_url)
             .header("Accept", "application/json")
-            .form(params)
+            .form(params);
+
+        if let Some(proof) = dpop_proof {
+            builder = builder.header("DPoP", proof);
+        }
+
+        builder
             .send()
             .await
             .map_err(&map_err)?

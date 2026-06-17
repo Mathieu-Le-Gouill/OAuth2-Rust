@@ -12,6 +12,7 @@ pub static GMAIL_IDENTITY: ProviderIdentity = ProviderIdentity {
     uses_pkce: true,
     confidential: true,
     extra_auth_params: GOOGLE_OFFLINE,
+    uses_dpop: true,
     oidc: Some(OidcConfig {
         issuer: Some("https://accounts.google.com"),
         issuer_is_prefix: false,

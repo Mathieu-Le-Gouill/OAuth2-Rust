@@ -82,6 +82,9 @@ pub struct ProviderIdentity {
     /// Extra query params appended to the authorize URL (e.g. `access_type=offline`).
     pub extra_auth_params: &'static [(&'static str, &'static str)],
 
+    /// Whether the token endpoint requires a DPoP proof header (RFC 9449).
+    pub uses_dpop: bool,
+
     /// OIDC configuration. `Some` if the provider supports OpenID Connect and returns
     /// an `id_token`; `None` for plain OAuth2 providers (e.g. GitHub).
     pub oidc: Option<OidcConfig>,
